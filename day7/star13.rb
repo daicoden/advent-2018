@@ -6,6 +6,7 @@ class Node
     @ready = false
     @prereqs = []
     @completed = false
+    @in_progress = false
   end
 
   def add_prereq(node)
@@ -13,21 +14,30 @@ class Node
   end
 
   def ready?
-    @prereqs.all?(&:completed?) && !completed?
+    @prereqs.all?(&:completed?) && !completed? && !in_progress?
   end
 
   def doit
     @completed = true
+    @in_progress = false
   end
 
   def completed?
     @completed
   end
+
+  def in_progress?
+    @in_progress
+  end
+
+  def in_progress!
+    @in_progress = true
+  end
 end
 
-{
+work_time = {
     a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8,
-    i: 9, j: 10, k: 11, l: 12, m: 13, n: 14, o: 15, p: 16, q: 17, r: 18 s: 19, t: 20, u: 21,
+    i: 9, j: 10, k: 11, l: 12, m: 13, n: 14, o: 15, p: 16, q: 17, r: 18, s: 19, t: 20, u: 21,
     v: 22, w: 23, x: 24, y: 25, z: 26
 }
 
@@ -45,15 +55,34 @@ lines.each do |line|
   end
 end
 
-workers = 5
-free = []
+workers = [5]
+step_adjustment = 60
+tick = 0
 
-result = []
-until nodes.values.all?(&:completed?)
-  node = nodes.values.find_all {|n| n.ready?}.sort_by(&:name).first
-  node.doit
-  result << node.name
+work = Hash.new { |h, v| h[v] = []}
+
+
+def wrap(node, workers)
+  Proc.new do
+    workers[0] +=1
+    node.doit
+  end
+
 end
 
-puts result.join("")
+until nodes.values.all?(&:completed?)
+  work[tick].each(&:call)
+
+  while workers[0] > 0 && (node = nodes.values.find_all {|n| n.ready?}.sort_by(&:name).first)
+    workers[0] -= 1
+    node.in_progress!
+    #puts "Assigning worker #{node.name} at #{tick} to finish at #{tick + step_adjustment + work_time[node.name.downcase.to_sym]}"
+    work[tick + step_adjustment + work_time[node.name.downcase.to_sym]] << wrap(node, workers)
+  end
+
+
+  tick = tick + 1
+end
+
+puts tick - 1
 
