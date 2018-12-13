@@ -124,11 +124,12 @@ def parse_tracks(rows)
   [tracks, carts]
 end
 
-def simulate_tick(track, carts)
-  carts = carts.sort do |cart_a, cart_b|
+def simulate_tick(track, running_carts)
+
+  carts = running_carts.sort do |cart_a, cart_b|
     comparison = cart_a.location[1] - cart_b.location[1]
     if comparison == 0
-      cart_a.location[0] - cart_b.location[0]
+       comparison = cart_a.location[0] - cart_b.location[0]
     end
 
     comparison
@@ -136,21 +137,28 @@ def simulate_tick(track, carts)
 
   cart_map = Hash.new {|h, k| h[k] = {}}
   carts.each do |cart|
-    cart_map[cart.location[0]][cart.location[1]] = true
+    cart_map[cart.location[0]][cart.location[1]] = cart
   end
 
   carts.each do |cart|
+    puts "Cart #{cart.id} at #{cart.location} #{cart.direction}"
+
     cart_map[cart.location[0]][cart.location[1]] = nil
 
     cart.move(track)
 
     if cart_map[cart.location[0]][cart.location[1]]
-      raise "BOOM CRASH #{cart.location}"
+      puts "Crash at #{cart.location[0]}, #{cart.location[1]}"
+      crashing_carts = [cart, cart_map[cart.location[0]][cart.location[1]]].map(&:id)
+
+      running_carts.delete_if {|crash| crashing_carts.include?(crash.id)}
+
+      cart_map[cart.location[0]][cart.location[1]] = nil
+    else
+      cart_map[cart.location[0]][cart.location[1]] = cart
     end
-
-    cart_map[cart.location[0]][cart.location[1]] = cart
   end
-
+  puts "---"
 end
 
 lines = File.read("day13-input.txt").split("\n")
@@ -167,13 +175,14 @@ def print_track
   end
 end
 
-(1..1000).each do |tick|
-
+until carts.length == 1
   simulate_tick(track, carts)
 
   carts.each do |cart|
-    puts "Cart #{cart.id} at #{cart.location} #{cart.direction}"
+    #puts "Cart #{cart.id} at #{cart.location} #{cart.direction}"
   end
 
-  puts "---"
+  #puts "---"
 end
+
+puts "Found cart #{carts[0].location}"
