@@ -20,7 +20,7 @@ def parse_grid(line)
   points
 end
 
-clay_location = File.read("test-input.txt").split("\n").flat_map {|line| parse_grid(line)}
+clay_location = File.read("day17-input.txt").split("\n").flat_map {|line| parse_grid(line)}
 
 $min_x = clay_location.map {|p| p[0]}.min
 $max_x = clay_location.map {|p| p[0]}.max
@@ -41,16 +41,26 @@ $water_count = 0
 
 DIRECTIONS = [:down, :left, :right]
 
-def existing_pool(point)
-  if $scan[point[0]][point[1]] == :water
-    return existing_pool([point[0] - 1, point[1]]) && existing_pool([point[0] + 1, point[1]])
+def existing_pool(point, cache)
+  unless cache[point].nil?
+    return cache[point]
   end
 
   if $scan[point[0]][point[1]] == :clay
-    return true
+    cache[point] = true
+    return cache[point]
   end
 
-  false
+  if $scan[point[0]][point[1]] == :water
+    cache[[point[0],point[1]]] = true
+    cache[[point[0] - 1, point[1]]] = existing_pool([point[0] - 1, point[1]], cache)
+    cache[[point[0] + 1, point[1]]] =  existing_pool([point[0] + 1, point[1]], cache)
+
+    return cache[[point[0] - 1, point[1]]] && cache[[point[0] + 1, point[1]]]
+  end
+
+  cache[point] = false
+  cache[point]
 end
 
 def fill(point, is_filling = false)
@@ -68,8 +78,7 @@ def fill(point, is_filling = false)
   end
 
   if $scan[point[0]][point[1]] == :water
-    #$scan[point[0]][point[1]] = :fixed_water
-    return true
+    return false
   end
 
   if $scan[point[0]][point[1]] == :sand
@@ -87,7 +96,7 @@ def fill(point, is_filling = false)
       left = fill([point[0] - 1, point[1]], true)
       right = fill([point[0] + 1, point[1]], true)
       return left && right
-    elsif $scan[point[0]][point[1] + 1] == :water && is_filling
+    elsif $scan[point[0]][point[1] + 1] == :water && existing_pool([point[0], point[1]+1], {})
       left = fill([point[0] - 1, point[1]], true)
       right = fill([point[0] + 1, point[1]], true)
       return left && right
