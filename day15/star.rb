@@ -1,10 +1,10 @@
 class Unit
-  attr_reader :attack, :location, :type
+  attr_reader :location, :attack, :type
   attr_accessor :hitpoints
 
-  def initialize(type, location)
+  def initialize(type, location, power)
     @hitpoints = 200
-    @attack = 3
+    @attack = power
     @type = type
     @location = location
   end
@@ -127,27 +127,21 @@ end
 
 units = []
 
-def parse_input(lines)
+def parse_input(lines, power)
   state = []
   lines.each_with_index do |row, i|
     row.split("").each_with_index do |column, j|
       state[j] ||= []
       if column == 'E'
-        $elves << Unit.new('E', Point.new(j, i))
+        $elves << Unit.new('E', Point.new(j, i), power)
       elsif column == 'G'
-        $goblins << Unit.new('G', Point.new(j, i))
+        $goblins << Unit.new('G', Point.new(j, i), 3)
       end
       state[j][i] = column
     end
   end
   state
 end
-
-lines = File.read("day15-input.txt").split("\n")
-map = parse_input(lines)
-
-
-units = $elves + $goblins
 
 
 def attack(unit, paths, map)
@@ -239,30 +233,53 @@ def print_map(state)
   end
 end
 
-print_map(map)
+def simulate(power)
+  $elves = []
+  $goblins = []
 
-turn_count = 0
-until $elves.none?(&:alive?) || $goblins.none?(&:alive?)
-  if turn(units, map)
-    turn_count += 1
+  lines = File.read("day15-input.txt").split("\n")
+  map = parse_input(lines, power)
+
+  alive_elves = $elves.size
+
+  units = $elves + $goblins
+
+  turn_count = 0
+  until $elves.none?(&:alive?) || $goblins.none?(&:alive?)
+    if turn(units, map)
+      turn_count += 1
+    end
+
+    #puts ""
+    #puts "---"
+    #puts "#{turn_count}"
+    #print_map(map)
+    #gets
   end
 
-  puts ""
-  puts "---"
-  puts "#{turn_count}"
-  print_map(map)
-  #gets
+  elves_alive = $elves.any?(&:alive?)
+  goblins_alive = $goblins.any?(&:alive?)
+  if elves_alive && goblins_alive
+    raise "Oops"
+  end
+
+  puts "And the victors are! #{elves_alive ? 'ELVES' : 'GOBLINS' } in #{turn_count } turns for power #{power}"
+
+  alive_units = elves_alive ? $elves : $goblins
+
+  hitpoint = alive_units.find_all(&:alive?).map(&:hitpoints).inject(0, &:+)
+  puts "#{power} #{hitpoint} #{turn_count} #{hitpoint * turn_count} #{alive_elves - $elves.find_all(&:alive?).size} died"
+  alive_elves == $elves.find_all(&:alive?).size
 end
 
-elves_alive = $elves.any?(&:alive?)
-goblins_alive = $goblins.any?(&:alive?)
-if elves_alive && goblins_alive
-  raise "Oops"
+found_min_power = false
+min_power = 3
+until found_min_power
+  if simulate(min_power)
+    found_min_power = true
+  else
+    min_power += 1
+  end
 end
 
-puts "And the victors are! #{elves_alive ? 'ELVES' : 'GOBLINS' } in #{turn_count } turns"
-
-alive_units = elves_alive ? $elves : $goblins
-
-hitpoint = alive_units.find_all(&:alive?).map(&:hitpoints).inject(0, &:+)
-puts "#{hitpoint} #{turn_count} #{hitpoint * turn_count}"
+puts "Min Power Needed #{min_power}"
