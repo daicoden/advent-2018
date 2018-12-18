@@ -37,7 +37,7 @@ first_elf = Node.new(3)
 second_elf = first_elf.insert_after(7)
 last = second_elf
 
-goal = 18
+goal = 77201
 
 while goal + 10  > $size
   (first_elf.value + second_elf.value).to_s.each_char do |next_value|
@@ -53,11 +53,21 @@ while goal + 10  > $size
   end
 end
 
+puts goal
+puts goal + 10
+puts $size
+
 10.times do |step|
   last = last.previous
 end
 
 str = ''
+if goal + 10 + 1 == $size
+  last = last.previous
+end
+
+puts $size
+
 10.times do |step|
   last = last.next
   str += last.value.to_s
