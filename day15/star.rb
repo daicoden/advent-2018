@@ -21,6 +21,8 @@ class Unit
     unit.hitpoints -= attack
     unless unit.alive?
       map[unit.location.x][unit.location.y] = '.'
+      unit.location.x = -1
+      unit.location.y = -1
     end
   end
 
@@ -151,7 +153,7 @@ def parse_input(lines)
   state
 end
 
-lines = File.read("test-input.txt").split("\n")
+lines = File.read("day15-input.txt").split("\n")
 map = parse_input(lines)
 
 
@@ -167,11 +169,14 @@ def attack(unit, paths, map)
     end
   else
     to_attack = paths.map do |path|
-      $elves.find {|e| e.location == path[1] }
+      $elves.find {|e| e.location == path[1]}
     end
   end
-  to_attack.sort_by! {|u| u.hitpoints}
-  puts "toattack #{unit.type} #{to_attack.map(&:hitpoints)}"
+  to_attack.sort_by! {|u| [u.hitpoints, u.location.y, u.location.x]}
+
+  if to_attack.any? {|a| a.hitpoints <= 0}
+    raise "STOP "
+  end
   unit.perform_attack(to_attack[0], map)
 end
 
@@ -187,6 +192,11 @@ def turn(units, map, turn_count)
 
   units.each do |unit|
     next unless unit.alive?
+
+    if $elves.none?(&:alive?) || $goblins.none?(&:alive?)
+      return false
+    end
+
 
     paths = breadth_search(map, unit)
     if paths.size == 0
@@ -204,7 +214,7 @@ def turn(units, map, turn_count)
 
   end
 
-  map
+  true
 end
 
 def print_map(state)
@@ -234,12 +244,15 @@ print_map(map)
 turn_count = 0
 until $elves.none?(&:alive?) || $goblins.none?(&:alive?)
   turn_count += 1
-  map = turn(units, map, turn_count)
+  completed = turn(units, map, turn_count)
+
+  turn_count -= 1 unless completed
 
   puts ""
   puts "---"
   puts "#{turn_count}"
   print_map(map)
+  gets
 end
 
 elves_alive = $elves.any?(&:alive?)
@@ -248,8 +261,8 @@ if elves_alive && goblins_alive
   raise "Oops"
 end
 
-puts "And the victors are! #{elves_alive ? 'ELVES' : 'GOBLINS' } in #{turn_count} turns"
+puts "And the victors are! #{elves_alive ? 'ELVES' : 'GOBLINS' } in #{turn_count } turns"
 
 alive_units = elves_alive ? $elves : $goblins
 
-puts alive_units.find_all(&:alive?).map(&:hitpoints).inject(0, &:+) * turn_count
+puts alive_units.find_all(&:alive?).map(&:hitpoints).inject(0, &:+) * (turn_count )
