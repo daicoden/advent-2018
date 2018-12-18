@@ -23,6 +23,10 @@ class Unit
       map[unit.location.x][unit.location.y] = '.'
     end
   end
+
+  def to_s
+    "#{type}(#{hitpoints})"
+  end
 end
 
 class Point
@@ -32,6 +36,7 @@ class Point
     @x = x
     @y = y
   end
+
   def to_s
     "(#{x},#{y})"
   end
@@ -156,17 +161,17 @@ units = $elves + $goblins
 def attack(unit, paths, map)
   if unit.target == 'G'
     to_attack = paths.map do |path|
-      puts "#{path[1]}"
       $goblins.find do |g|
         g.location == path[1]
       end
     end
   else
     to_attack = paths.map do |path|
-      $elves.find {|e| e.location == path[1]}
+      $elves.find {|e| e.location == path[1] }
     end
   end
-  to_attack.sort_by { |u| -u.hitpoints }
+  to_attack.sort_by! {|u| u.hitpoints}
+  puts "toattack #{unit.type} #{to_attack.map(&:hitpoints)}"
   unit.perform_attack(to_attack[0], map)
 end
 
@@ -178,15 +183,20 @@ def move(map, unit, path)
 end
 
 def turn(units, map, turn_count)
-  units.sort_by {|u| [u.location.y, u.location.x]}
+  units.sort_by! {|u| [u.location.y, u.location.x]}
 
   units.each do |unit|
+    next unless unit.alive?
+
     paths = breadth_search(map, unit)
     if paths.size == 0
       # blocked, don't move
     else
       if paths[0].size == 2
         attack(unit, paths, map)
+      elsif paths[0].size == 3
+        move(map, unit, paths[0])
+        attack(unit, paths.map {|c| c[1..-1]}, map)
       else
         move(map, unit, paths[0])
       end
@@ -201,8 +211,19 @@ def print_map(state)
   max_y = state.size
   max_x = state[0].size
   max_y.times do |y|
+    units = []
     max_x.times do |x|
       print state[x][y]
+      if state[x][y] == 'G'
+        units << ['G', x, y]
+      elsif state[x][y] == 'E'
+        units << ['E', x, y]
+      end
+    end
+    units.each do |u|
+      to_search = u[0] == 'G' ? $goblins : $elves
+      to_print = to_search.find {|cand| cand.location.x == u[1] && cand.location.y == u[2]}
+      print " #{to_print}"
     end
     print("\n")
   end
@@ -211,18 +232,24 @@ end
 print_map(map)
 
 turn_count = 0
-3.times do
-  if $elves.none?(&:alive?) || $goblins.none?(&:alive?)
-    break [map, turn_count]
-  end
+until $elves.none?(&:alive?) || $goblins.none?(&:alive?)
   turn_count += 1
   map = turn(units, map, turn_count)
 
   puts ""
   puts "---"
-  puts ""
+  puts "#{turn_count}"
   print_map(map)
-
-  [map, turn_count]
 end
 
+elves_alive = $elves.any?(&:alive?)
+goblins_alive = $goblins.any?(&:alive?)
+if elves_alive && goblins_alive
+  raise "Oops"
+end
+
+puts "And the victors are! #{elves_alive ? 'ELVES' : 'GOBLINS' } in #{turn_count} turns"
+
+alive_units = elves_alive ? $elves : $goblins
+
+puts alive_units.find_all(&:alive?).map(&:hitpoints).inject(0, &:+) * turn_count
