@@ -66,16 +66,6 @@ def visited?(state, point)
   state[point.x][point.y]
 end
 
-def blocked?(map, point)
-  if point.x < 0 || point.y < 0 || point.x > map[0].length || point.y > map.length
-    return true
-  end
-
-  if map[point.x][point.y] == '#'
-    return true
-  end
-end
-
 def at_path(map, location, unit)
   if location.x < 0 || location.y < 0 || location.x > map[0].length || location.y > map.length
     return :blocked
@@ -124,7 +114,7 @@ def breadth_search(map, unit)
 
         all_blocked = false
 
-        visited[neighbor.x][neighbor.y] = true
+        visited[neighbor.x][neighbor.y] = true unless goal_reached
         new_paths << current_path + [neighbor]
       end
     end
@@ -180,14 +170,16 @@ def attack(unit, paths, map)
   unit.perform_attack(to_attack[0], map)
 end
 
-def move(map, unit, path)
+def move(map, unit, paths)
+  path = paths.sort_by {|path| [path[-2].y, path[-2].x]}[0]
+
   map[unit.location.x][unit.location.y] = '.'
   map[path[1].x][path[1].y] = unit.type
   unit.location.x = path[1].x
   unit.location.y = path[1].y
 end
 
-def turn(units, map, turn_count)
+def turn(units, map)
   units.sort_by! {|u| [u.location.y, u.location.x]}
 
   units.each do |unit|
@@ -205,10 +197,18 @@ def turn(units, map, turn_count)
       if paths[0].size == 2
         attack(unit, paths, map)
       elsif paths[0].size == 3
-        move(map, unit, paths[0])
-        attack(unit, paths.map {|c| c[1..-1]}, map)
+        move(map, unit, paths)
+        paths = breadth_search(map, unit)
+        if paths.empty?
+          throw "not possible"
+        end
+        if paths[0].size != 2
+          throw "not possible"
+        end
+
+        attack(unit, paths, map)
       else
-        move(map, unit, paths[0])
+        move(map, unit, paths)
       end
     end
 
@@ -243,16 +243,15 @@ print_map(map)
 
 turn_count = 0
 until $elves.none?(&:alive?) || $goblins.none?(&:alive?)
-  turn_count += 1
-  completed = turn(units, map, turn_count)
-
-  turn_count -= 1 unless completed
+  if turn(units, map)
+    turn_count += 1
+  end
 
   puts ""
   puts "---"
   puts "#{turn_count}"
   print_map(map)
-  gets
+  #gets
 end
 
 elves_alive = $elves.any?(&:alive?)
@@ -265,4 +264,5 @@ puts "And the victors are! #{elves_alive ? 'ELVES' : 'GOBLINS' } in #{turn_count
 
 alive_units = elves_alive ? $elves : $goblins
 
-puts alive_units.find_all(&:alive?).map(&:hitpoints).inject(0, &:+) * (turn_count )
+hitpoint = alive_units.find_all(&:alive?).map(&:hitpoints).inject(0, &:+)
+puts "#{hitpoint} #{turn_count} #{hitpoint * turn_count}"
