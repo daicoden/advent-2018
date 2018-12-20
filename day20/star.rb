@@ -14,7 +14,6 @@ def mapout(index, p, complex, string)
   complex[p[0]][p[1]] = 'X'
   to_simulate = [p]
   stack = []
-  new_simulations = []
   min_x = complex.size
   max_x = 0
 
@@ -23,7 +22,7 @@ def mapout(index, p, complex, string)
 
   while index < string.size
 
-    to_simulate.each do |point|
+    to_simulate.dup.each do |point|
       if point[0] > max_x
         max_x = point[0]
       end
@@ -55,17 +54,16 @@ def mapout(index, p, complex, string)
         complex[point[0] - 2][point[1]] = '.'
         point[0] -= 2
       when '('
-        stack.push(point.dup)
+        stack.push([point.dup, to_simulate])
         break
       when ')'
-        stack.pop
+        new_simulations = stack.pop[1]
         to_simulate = new_simulations
-        new_simulations = []
         break
       when '|'
-        new_simulations << point.dup
-        point[0] = stack[-1][0]
-        point[1] = stack[-1][1]
+        stack[-1][1] << point.dup unless stack[-1][1].include?(point)
+        point[0] = stack[-1][0][0]
+        point[1] = stack[-1][0][1]
       else
         raise "Don't know #{string[index]}"
       end
@@ -74,7 +72,7 @@ def mapout(index, p, complex, string)
     index += 1
   end
 
-  [(min_x - 1)..(max_x + 1), (min_y - 1)..(max_y + 1)]
+  [(min_x - 1)..(max_x + 3), (min_y - 1)..(max_y + 1)]
 end
 
 
@@ -94,7 +92,6 @@ def visited?(state, point)
 end
 
 def at_path(map, location)
-
   if location[0] < 0 || location[1] < 0 || location[0] > map[0].length || location[1] > map.length
     return :blocked
   end
@@ -111,7 +108,7 @@ def at_path(map, location)
   :open
 end
 
-def breadth_search(map, point, target)
+def breadth_search(map, point)
   goal_reached = false
   all_blocked = false
   paths = [[point.dup]]
@@ -135,14 +132,12 @@ def breadth_search(map, point, target)
           next
         end
 
-        if target == with_adjustment
-          found_paths << current_path + [neighbor]
-          goal_reached = true
-        end
+        found_paths << current_path + [with_adjustment]
 
         all_blocked = false
 
-        visited[with_adjustment[0]][with_adjustment[1]] = true unless goal_reached
+        end_room = around(with_adjustment).find_all {|n, a| at_path(map, [n[0], n[1]]) == :open && !visited?(visited, n)}.size
+        visited[with_adjustment[0]][with_adjustment[1]] = true unless end_room == 1
 
         new_paths << current_path + [with_adjustment]
       end
@@ -151,15 +146,30 @@ def breadth_search(map, point, target)
     paths = new_paths
   end
 
-  found_paths.min_by {|found_paths| found_paths.size}
+  room_found = {}
+
+  found_paths.each do |path|
+    if room_found[path[-1]]
+      if path.size < room_found[path[-1]].size
+        room_found[path[-1]] = path
+      end
+
+    else
+      room_found[path[-1]] = path
+    end
+  end
+
+  room_found.values
 end
 
 
-def print_complex(state, range_x, range_y)
+def print_complex(state, range_x, range_y, max_path = [])
   range_y.each do |y|
     range_x.each do |x|
       if state[x][y] == '?'
         print '#'
+      elsif max_path.include?([x, y]) && max_path.first != [x, y]
+        print '*'
       else
         print state[x][y]
       end
@@ -168,29 +178,24 @@ def print_complex(state, range_x, range_y)
   end
 end
 
-regex = File.read("test3-input.txt").chomp
+regex = File.read("day20-input.txt").chomp
 
 puts regex[1...-1]
 
 start = [150, 150]
 bounds = mapout(0, start.dup, complex, regex[1...-1])
 
-print_complex(complex, bounds[0], bounds[1])
 
-
-found_paths = []
-bounds[1].each do |y|
-  bounds[0].each do |x|
-    if complex[x][y] == '.'
-      found_paths << breadth_search(complex, start.dup, [x, y])
-    end
-  end
-end
+found_paths = breadth_search(complex, start.dup)
 
 found_paths.each do |path|
 #  puts path.inspect
 end
 
+print_complex(complex, bounds[0], bounds[1])
+
 max_path = found_paths.max_by {|x| x.size}
+
+print_complex(complex, bounds[0], bounds[1])
 
 puts max_path.size - 1
