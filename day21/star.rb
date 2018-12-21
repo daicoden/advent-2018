@@ -141,7 +141,7 @@ class Device
       run(*program[@ip])
       puts "#{ip}: #{register.inspect} -> #{@registers.inspect}"
       if @ip == 28
-        if count == 0
+        if count == 1
           exit(0)
         end
         count +=1
