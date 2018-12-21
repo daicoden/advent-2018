@@ -1,34 +1,28 @@
 MAX = 16777215
 MULT = 65899
-START = 65536
+OR = 65536
 
 
 START_VALUE = 8586263
 
 test = 0
-test |= START
-value = START_VALUE
+test |= OR
+value = (START_VALUE * MULT) & MAX
 
 seenValues = {}
+history = []
 
 count = 0
 while value < MAX
 
-  index = 0
-  while (index +1) * 256 <= test
-    index += 1
-  end
+  index = test / 256
 
-  puts "--"
-  puts "Value #{value} Test #{test} Index #{index}"
+#  puts "--"
+#  puts "Value #{value} Test #{test} Index #{index}"
 
-  if test == 1
-    value += test & 255
-    value *= MULT
-    value &= MAX
+  if test == 1 || test == 0
+    test = value | OR
 
-    test = value
-    puts "A Value #{value} Test #{test} Index #{index}"
     value = START_VALUE
     value += test & 255
     #puts "Value #{value}"
@@ -36,33 +30,31 @@ while value < MAX
     value &= MAX
 
 
+#    puts "A Value #{value} Test #{test} Index #{index}"
+
   else
-    puts test & 255
-    value += (test & 255)
-    puts "B Value #{value} Test #{test} Index #{index}"
-
-    value *= MULT
-    puts "B Value #{value} Test #{test} Index #{index}"
-    value &= MAX
-
     test = index
-    #value *= MULT
-    #value &= MAX
+    value += (test & 255)
+    value *= MULT
+    value &= MAX
   end
 
-  seenValues[value] = true
 
-  puts "Value #{value} Test #{test} Index #{index}"
-  if count == 5
-    exit(1)
+
+  if count % 10000 == 0
+    #puts "Value #{value} Test #{test} Index #{index}"
+    #puts seenValues.count
+
   end
+
+  if value == 13943296
+
+    puts "you found it but wrong end condition"
+    exit 1
+  end
+
 
   count += 1
-
-  if seenValues.size == 22063
-    puts "FOUND IT! #{value}"
-    exit(1)
-  end
 end
 
 puts value
