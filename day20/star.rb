@@ -178,7 +178,7 @@ def print_complex(state, range_x, range_y, max_path = [])
   end
 end
 
-regex = File.read("day20-input.txt").chomp
+regex = File.read("test3-input.txt").chomp
 
 puts regex[1...-1]
 
@@ -194,8 +194,4 @@ end
 
 print_complex(complex, bounds[0], bounds[1])
 
-max_path = found_paths.max_by {|x| x.size}
-
-print_complex(complex, bounds[0], bounds[1])
-
-puts max_path.size - 1
+puts found_paths.find_all { |x| x.size - 1 >= 1000 }.size
