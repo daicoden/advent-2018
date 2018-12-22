@@ -1,4 +1,4 @@
-require 'pqueue'
+require 'fast_priority_queue'
 
 CHART = [:rocky, :wet, :narrow]
 
@@ -172,7 +172,7 @@ class Exploration
 
 end
 
-paths = PQueue.new {|a, b| a.score <= b.score}
+paths = FastPriorityQueue.new {|a, b| a.score <=> b.score}
 
 def depth_first(cave, explorations, target, visited = Hash.new {|h, k| h[k] = Hash.new {|a, b| a[b] = Hash.new {|y, z| y[z] = false}}})
   count = 0
@@ -188,9 +188,9 @@ def depth_first(cave, explorations, target, visited = Hash.new {|h, k| h[k] = Ha
     end
     visited[exploration.location[0]][exploration.location[1]][exploration.equipment] = true
 
-    if exploration.location[0] > 3 * target[0] || exploration.location[1] > 2 * target[1]
-      next
-    end
+    #if exploration.location[0] > 3 * target[0] || exploration.location[1] > 2 * target[1]
+    #  next
+    #end
 
     if exploration.location == target && exploration.equipment.include?(:torch)
       return exploration
@@ -198,7 +198,7 @@ def depth_first(cave, explorations, target, visited = Hash.new {|h, k| h[k] = Ha
 
     exploration.next_paths.each do |new_exploration|
       if can_enter?(cave, new_exploration.location, new_exploration.equipment) && can_enter?(cave, exploration.location, new_exploration.equipment)
-        explorations.push(new_exploration)
+        explorations.add(new_exploration)
       end
     end
   end
@@ -216,7 +216,7 @@ target = [14, 760]
 #1055 is to high
 
 cave = CaveSystem.new(depth, target)
-paths.push(Exploration.new(0, [:torch], [0, 0]))
+paths.add(Exploration.new(0, [:torch], [0, 0]))
 
 shortest_path = depth_first(cave, paths, target)
 
