@@ -56,20 +56,6 @@ def fill_map(depth, target, map)
 end
 
 
-map = []
-
-
-# Puzzle Input
-depth = 7863
-target = [14, 760]
-
-#depth = 510
-#target = [10, 10]
-fill_map(depth, [target[0] + 500, target[1] + 500], map)
-
-
-print_complex(map, 0..target[0], 0..target[1])
-
 def calc_sum(map, range_x, range_y)
   sum = 0
   range_y.each do |y|
@@ -101,6 +87,7 @@ class CaveSystem
   def value_at(location)
     x = location[0]
     y = location[1]
+
     if @values[x] && @values[x][y]
       return @values[x][y]
     end
@@ -115,9 +102,10 @@ class CaveSystem
         elsif y == 0
           x * 16807
         else
-          value_at(map[x - 1][y]) * value_at(map[x][y - 1])
+          value_at([x - 1, y]) * value_at([x, y - 1])
         end
 
+    @values[x] ||= []
     @values[x][y] = ((geological_index + depth) % 20183)
   end
 
@@ -125,7 +113,7 @@ class CaveSystem
     value = if @values[location[0]].nil? || @values[location[0]][location[1]].nil?
               value_at(location)
             else
-              @values[location[0][location[1]]]
+              @values[location[0]][location[1]]
             end
 
     CHART[value % 3]
@@ -153,7 +141,7 @@ end
 class Exploration
   attr_reader :score, :equipment, :location
   COMBINATIONS = [[], [:torch], [:gear], [:torch, :gear]]
-  AROUND = [[-1, 0], [0, -1], [[1, 0]], [0, 1], [0, 0]]
+  AROUND = [[-1, 0], [0, -1], [1, 0], [0, 1], [0, 0]]
 
   def initialize(score, equipment, location)
     @score = score
@@ -162,7 +150,7 @@ class Exploration
   end
 
 
-  def each_path
+  def next_paths
     Enumerator.new do |y|
       COMBINATIONS.each do |new_equipment|
         new_score = score + 1
@@ -178,15 +166,29 @@ class Exploration
     end
   end
 
+  def to_s
+    "#{location} #{equipment}: #{score}"
+  end
+
 end
 
 paths = PQueue.new {|a, b| a.score <= b.score}
 
 def depth_first(cave, explorations, target, visited = Hash.new {|h, k| h[k] = Hash.new {|a, b| a[b] = Hash.new {|y, z| y[z] = false}}})
+  count = 0
   while true
-    exploration = explorations.peek
+    exploration = explorations.pop
+    if count % 1000 == 0
+      puts "Looking at #{exploration}"
+    end
+    count += 1
 
     if visited[exploration.location[0]][exploration.location[1]][exploration.equipment]
+      next
+    end
+    visited[exploration.location[0]][exploration.location[1]][exploration.equipment] = true
+
+    if exploration.location[0] > 3 * target[0] || exploration.location[1] > 2 * target[1]
       next
     end
 
@@ -194,18 +196,28 @@ def depth_first(cave, explorations, target, visited = Hash.new {|h, k| h[k] = Ha
       return exploration
     end
 
-    exploration.each_path do |new_exploration|
-      if can_enter?(cave, new_exploration.location, new_exploration.equipment)
+    exploration.next_paths.each do |new_exploration|
+      if can_enter?(cave, new_exploration.location, new_exploration.equipment) && can_enter?(cave, exploration.location, new_exploration.equipment)
         explorations.push(new_exploration)
       end
     end
   end
 end
 
+
+# Puzzle Input
+depth = 7863
+target = [14, 760]
+
+
+#1053 to low
+#1057
+
+#1055 is to high
+
+cave = CaveSystem.new(depth, target)
 paths.push(Exploration.new(0, [:torch], [0, 0]))
 
-depth_first(cave, paths, target)
+shortest_path = depth_first(cave, paths, target)
 
-min_path = puts paths.pop
-
-puts min_path.score
+puts shortest_path
